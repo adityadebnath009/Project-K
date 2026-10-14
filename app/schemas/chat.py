@@ -1,8 +1,10 @@
 from pydantic import BaseModel, Field
 
+
 class ChatRequest(BaseModel):
     conversation_id: str | None = Field(default=None, description="The ID of the conversation. If not provided, a new conversation will be created.")
     message: str = Field(description="The user's message.", min_length=1, max_length=1000)
+    user_id: str | None = Field(default="default_user", description="The ID of the user. If not provided, a new user will be created.")
 
 
 
