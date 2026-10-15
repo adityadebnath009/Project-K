@@ -51,6 +51,7 @@ class ContextManager:
             user_id:str,
             history: list[dict[str, Any]],
             system_prompt: str | None = None,
+            summary:str | None = None,
             max_budget: int | None = None
     ) -> ContextPackage:
         budget = max_budget or settings.max_input_tokens
@@ -66,7 +67,20 @@ class ContextManager:
                 f"System prompt ({system_tokens} tokens) exceeds total input budget ({budget} tokens)."
             )
 
-        remaining_budget = budget - system_tokens
+        summary_messages = []
+        summary_tokens = 0
+
+        if summary:
+            summary_messages = {"role":"system", "content": summary}
+            summary_tokens = self.token_counter.count_tokens_in_message(summary_messages)
+
+        mandatory_tokens = system_tokens + summary_tokens
+
+        if(mandatory_tokens >= budget):
+            raise ContextBudgetExceededError(f"Mandatory context ({mandatory_tokens} tokens) exceeds total input budget ({budget} tokens).")
+        
+
+        remaining_budget = budget - mandatory_tokens
 
         turns = self._group_into_turns(history)
 
@@ -94,8 +108,11 @@ class ContextManager:
             msg for turn in selected_turns for msg in turn
         ]
        
-        final_messages = [system_message, *flattened_history]
-        total_tokens = system_tokens + accumulated_history_tokens
+        if summary_messages:
+            final_messages = [system_message, summary_messages ,*flattened_history]
+        else:
+            final_messages = [system_message, *flattened_history]
+        total_tokens = mandatory_tokens + accumulated_history_tokens
         return ContextPackage(
             conversation_id=conversation_id,
             user_id=user_id,

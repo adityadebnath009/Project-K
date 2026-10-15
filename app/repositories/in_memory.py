@@ -11,6 +11,7 @@ class InMemoryConversationRepository(ConversationRepository):
         self._conversations: dict[str, dict[str, Any]] = {}
         self._messages: dict[str, list[dict[str, Any]]] = {}
         self._global_message_id: int = 0
+        self._summaries: dict[str, list[dict[str, Any]]] = {}
 
 
 
@@ -26,7 +27,7 @@ class InMemoryConversationRepository(ConversationRepository):
             "user_id": user_id,
             "created_at": datetime.now(UTC)
         }
-
+        self._summaries[new_conversation_id] = []
         self._messages[new_conversation_id] = []
         return new_conversation_id
 
@@ -68,6 +69,38 @@ class InMemoryConversationRepository(ConversationRepository):
 
     def conversation_exists(self, conversation_id: str) ->bool:
         return conversation_id in self._conversations
-          
 
 
+    def save_summary(self, 
+                    conversation_id,
+                    summary_content, 
+                    last_covered_sequence_number
+                    ) -> dict[str, Any]:
+
+
+
+        if conversation_id not in self._conversations:
+            raise ValueError(f"Conversation {conversation_id} does not exists")
+
+        if conversation_id not in self._summaries:
+            self._summaries[conversation_id] = []
+
+        version = len(self._summaries[conversation_id]) + 1
+        summary_record = {
+            "conversation_id":conversation_id,
+            "version":version,
+            "summary_content" : summary_content,
+            "last_covered_sequence_number": last_covered_sequence_number,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        self._summaries[conversation_id].append(summary_record)
+        return summary_record
+
+  
+    def get_latest_summary(
+    self, conversation_id: str
+) -> dict[str, Any] | None:
+        summaries = self._summaries.get(conversation_id, [])
+        if summaries:
+            return summaries[-1]  # Return the latest version
+        return None

@@ -43,4 +43,27 @@ class ConversationRepository(Protocol):
         """
         ...
 
+    def save_summary(
+            self,
+            conversation_id: str,
+            summary_content: str,
+            last_covered_sequence_number: int
+    ) -> dict[str, Any]:
+        """
+        saves a new compaction summary for the conversation.
+        Tracks 
+        """
+        ...
+
+
+    def get_latest_summary(
+            self,
+            conversation_id:str
+    ) -> dict[str,Any] | None:
+        """
+        Retrieves the most recent summary for the conversation.
+        or None if the conversation has beed compacted.
+        """
+        ...
+
     
