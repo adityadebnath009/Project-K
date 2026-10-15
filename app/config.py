@@ -20,7 +20,7 @@ class Settings:
 
     @property
     def max_input_tokens(self) -> int:
-        return self.effective_context_limit - self.reserved_output_tokens - self.safety_marging
+        return self.effective_context_limit - self.reserved_output_tokens - self.safety_margin
 
 
 settings = Settings()

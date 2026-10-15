@@ -1,8 +1,10 @@
 import os
-import pprint
+import pprint # type : ignore
 
 from dotenv import load_dotenv
 from openai import OpenAI
+
+from app.schemas.chat import ChatRequest
 
 load_dotenv()
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")

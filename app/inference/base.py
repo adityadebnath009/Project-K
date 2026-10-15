@@ -9,7 +9,7 @@ class InferenceClient(Protocol):
     """
 
     def generate(
-        self, conversation_id: str, 
+        self,  
         messages: list[dict[str, Any]],
         system_prompt: str | None = None,
     ) -> str:

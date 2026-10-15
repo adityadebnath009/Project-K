@@ -1,5 +1,6 @@
+
 from datetime import datetime
-from typing import TYPE_CHECKING
+from pickletools import uint4
 import uuid
 from sqlalchemy import (
     DateTime,
@@ -12,11 +13,14 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.entities.base import Base
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.entities.conversation import Conversation
 
+from app.entities.conversation import Conversation
 
 class Message(Base):
     __tablename__ = "messages"
@@ -42,11 +46,14 @@ class Message(Base):
         index=True,
     )
 
-    role: Mapped[str] = mapped_column(String(50), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), 
+                                      nullable=False)
 
-    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(Text, 
+                                         nullable=False)
 
-    sequence_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    sequence_number: Mapped[int] = mapped_column(Integer, 
+                                                 nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
