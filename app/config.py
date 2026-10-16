@@ -1,4 +1,5 @@
 import os
+import re
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
@@ -17,10 +18,15 @@ class Settings:
     reserved_output_tokens: int = int(os.getenv("RESERVED_OUTPUT_TOKENS", "1500"))
     safety_margin: int = int(os.getenv("SAFETY_MARGIN", "200"))
 
+    raw_database_url: str = os.getenv("DATABASE_URL", 
+                                      'postgresql://neondb_owner:npg_jstyHKrY8G7o@ep-wild-lake-b49mc3uq-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require')
 
     @property
     def max_input_tokens(self) -> int:
         return self.effective_context_limit - self.reserved_output_tokens - self.safety_margin
 
+    @property
+    def database_url(self):
+         return re.sub(r"^postgresql:", "postgresql+psycopg:", self.raw_database_url)
 
 settings = Settings()

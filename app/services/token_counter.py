@@ -34,3 +34,5 @@ class TokenCounter:
         for message in messages:
             total_tokens += self.count_tokens_in_message(message)
         return total_tokens
+
+

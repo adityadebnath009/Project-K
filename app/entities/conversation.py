@@ -1,3 +1,4 @@
+from unittest import case
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -10,6 +11,7 @@ from app.entities.base import Base
 if TYPE_CHECKING:
     from app.entities.message import Message
     from app.entities.user import User
+    from app.entities.conversation_summary import ConversationSummary
 
 
 class Conversation(Base):
@@ -50,4 +52,10 @@ class Conversation(Base):
     user: Mapped["User"] = relationship(
     "User",
     back_populates="conversations",
+    )
+
+    summaries: Mapped[list["ConversationSummary"]] = relationship(
+        "ConversationSummary",
+        back_populates="conversation",
+        cascade="all, delete-orphan"
     )
