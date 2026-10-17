@@ -6,9 +6,12 @@ from sqlalchemy import DateTime, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities.base import Base
+from app.entities.user_memory import UserMemory
 
 if TYPE_CHECKING:
     from app.entities.conversation import Conversation
+    from app.entities.project import Project
+    from app.entities.user_memory import UserMemory
 
 
 class User(Base):
@@ -31,3 +34,17 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    memories : Mapped[list["UserMemory"]] = relationship(
+        "UserMemory",
+        back_populates="user",
+        cascade = "all, delete-orphan"
+    )
+
+    projects: Mapped[list["Project"]] = relationship(
+    "Project",
+    back_populates="user",
+    cascade="all, delete-orphan",
+    )
+
+
+

@@ -1,4 +1,3 @@
-from unittest import case
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -9,9 +8,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.entities.base import Base
 
 if TYPE_CHECKING:
-    from app.entities.message import Message
-    from app.entities.user import User
     from app.entities.conversation_summary import ConversationSummary
+    from app.entities.message import Message
+    from app.entities.project import Project
+    from app.entities.user import User
 
 
 class Conversation(Base):
@@ -28,6 +28,12 @@ class Conversation(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+    )
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+    Uuid,
+    ForeignKey("projects.id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -59,3 +65,9 @@ class Conversation(Base):
         back_populates="conversation",
         cascade="all, delete-orphan"
     )
+    project: Mapped["Project | None"] = relationship(
+    "Project",
+    back_populates="conversations",
+    )
+
+
