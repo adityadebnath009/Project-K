@@ -21,7 +21,7 @@ class InMemoryConversationRepository(ConversationRepository):
             return conversation_id
 
 
-        new_conversation_id = conversation_id or str(uuid.uuid4())
+        new_conversation_id = conversation_id or str(uuid.uuid7())
 
         self._conversations[new_conversation_id] = {
             "user_id": user_id,

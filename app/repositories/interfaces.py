@@ -1,5 +1,7 @@
 from typing import Protocol, Any, runtime_checkable
 
+from app.schemas.user import UserDTO
+
 
 @runtime_checkable
 class ConversationRepository(Protocol):
@@ -66,4 +68,24 @@ class ConversationRepository(Protocol):
         """
         ...
 
-    
+
+
+@runtime_checkable
+class UserRepository(Protocol):
+    def create_user(self,user_id: str | None = None) -> UserDTO:
+        """
+        Registers a new user by ID, or None if not found.
+        """
+        ...
+
+    def get_user(self, user_id: str) -> UserDTO | None:
+        """
+        Retrieve the user by id or None if not found
+        """
+        ...
+    def user_exists(self, user_id:str) -> bool:
+        """
+        Existence Checking
+        """
+        ...
+

@@ -17,7 +17,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
         primary_key=True,
-        default=uuid.uuid4,
+        default=uuid.uuid7,
     )
 
     created_at: Mapped[datetime] = mapped_column(
