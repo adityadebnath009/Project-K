@@ -1,5 +1,7 @@
-from typing import Protocol, Any, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
+from app.schemas.memory import ExtractedMemoryPackage, ProjectMemoryDTO, UserProfileDTO
+from app.schemas.project import ProjectDTO
 from app.schemas.user import UserDTO
 
 
@@ -89,3 +91,49 @@ class UserRepository(Protocol):
         """
         ...
 
+
+@runtime_checkable
+class ProjectRepository(Protocol):
+    """
+    Abstract interface for project workspace persistence.
+    """
+    def get_or_create_project(
+        self, user_id: str, name: str, root_path: str, description: str | None = None
+    ) -> ProjectDTO:
+        """Retrieves existing project by (user_id, root_path) or creates a new one."""
+        ...
+    def get_project(self, project_id: str) -> ProjectDTO | None:
+        """Retrieves a project by its primary key ID."""
+        ...
+    def get_project_by_root_path(self, user_id: str, root_path: str) -> ProjectDTO | None:
+        """Retrieves a project matching a user and local directory root path."""
+        ...
+@runtime_checkable
+class MemoryRepository(Protocol):
+    """
+    Abstract interface for persisting and retrieving user profile & project memories.
+    Handles validation, in-memory deduplication, and atomic PostgreSQL upserts.
+    """
+    def save_extracted_package(
+        self,
+        user_id: str,
+        project_id: str | None,
+        package: ExtractedMemoryPackage,
+    ) -> tuple[int, int]:
+        """
+        Validates, deduplicates, and persists facts from an extraction package.
+        Returns (user_facts_upserted_count, project_facts_upserted_count).
+        """
+        ...
+    def get_user_profile(self, user_id: str) -> UserProfileDTO:
+        """Retrieves all active memory items for a user."""
+        ...
+    def get_project_memory(self, project_id: str) -> ProjectMemoryDTO | None:
+        """Retrieves all active architecture memory items for a project."""
+        ...
+    def delete_user_memory(self, user_id: str, key: str) -> bool:
+        """Deletes a specific user memory fact by key."""
+        ...
+    def delete_project_memory(self, project_id: str, key: str) -> bool:
+        """Deletes a specific project memory fact by key."""
+        ...

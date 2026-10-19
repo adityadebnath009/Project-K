@@ -21,6 +21,9 @@ class Settings:
     raw_database_url: str = os.getenv("DATABASE_URL", 
                                       'postgresql://neondb_owner:npg_jstyHKrY8G7o@ep-wild-lake-b49mc3uq-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require')
 
+    reserved_user_profile_tokens: int = int(os.getenv("RESERVED_USER_PROFILE_TOKENS", "150"))
+    reserved_project_memory_tokens: int = int(os.getenv("RESERVED_PROJECT_MEMORY_TOKENS", "350"))
+
     @property
     def max_input_tokens(self) -> int:
         return self.effective_context_limit - self.reserved_output_tokens - self.safety_margin

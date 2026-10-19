@@ -1,12 +1,13 @@
 import uuid
 from datetime import datetime, timezone, UTC
 from typing import Any
-from app.repositories import ConversationRepository
+from app.repositories.interfaces import ConversationRepository
 
 
 
 
-class InMemoryConversationRepository(ConversationRepository):
+
+class InMemoryConversationRepository:
     def __init__(self):
         self._conversations: dict[str, dict[str, Any]] = {}
         self._messages: dict[str, list[dict[str, Any]]] = {}
@@ -21,7 +22,7 @@ class InMemoryConversationRepository(ConversationRepository):
             return conversation_id
 
 
-        new_conversation_id = conversation_id or str(uuid.uuid7())
+        new_conversation_id = conversation_id or str(uuid.uuid4())
 
         self._conversations[new_conversation_id] = {
             "user_id": user_id,
