@@ -1,7 +1,8 @@
 
-from datetime import datetime
-from pickletools import uint4
 import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import (
     DateTime,
     ForeignKey,
@@ -16,11 +17,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities.base import Base
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.entities.conversation import Conversation
 
 from app.entities.conversation import Conversation
+
 
 class Message(Base):
     __tablename__ = "messages"

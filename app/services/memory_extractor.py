@@ -32,9 +32,10 @@ class MemoryExtractor:
                 base_url: str | None = None):
 
         self.model_name = model_name or settings.model_name
-        self.base_url = base_url or settings.ai_base_url
+        raw_url = base_url or settings.ai_base_url
+        self.base_url = raw_url.rstrip("/").removesuffix("/v1")
 
-        self.llm   = ChatOllama(
+        self.llm = ChatOllama(
             model=self.model_name,
             base_url=self.base_url,
             temperature=0.0

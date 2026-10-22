@@ -66,3 +66,27 @@ class CompactionSummary(BaseModel):
                 lines.append(f"- {p}")
 
         return "\n".join(lines)
+
+
+class CompactionResult(BaseModel):
+    """
+    Structured outcome of a compaction execution.
+    Returned by ConversationService._execute_compaction.
+    """
+    summary_content: str = Field(
+        description="The markdown context string of the compacted operational state."
+    )
+    version: int = Field(
+        description="The sequential version number of the summary."
+    )
+    last_covered_sequence_number: int = Field(
+        description="The highest message sequence number covered by this compaction."
+    )
+    user_facts_saved: int = Field(
+        default=0,
+        description="Count of durable user profile facts extracted and upserted."
+    )
+    project_facts_saved: int = Field(
+        default=0,
+        description="Count of durable project architecture facts extracted and upserted."
+    )

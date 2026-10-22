@@ -23,7 +23,7 @@ class Settings:
 
     reserved_user_profile_tokens: int = int(os.getenv("RESERVED_USER_PROFILE_TOKENS", "150"))
     reserved_project_memory_tokens: int = int(os.getenv("RESERVED_PROJECT_MEMORY_TOKENS", "350"))
-
+    auto_compact_threshold: float = float(os.getenv("AUTO_COMPACT_THRESHOLD", "0.80"))
     @property
     def max_input_tokens(self) -> int:
         return self.effective_context_limit - self.reserved_output_tokens - self.safety_margin

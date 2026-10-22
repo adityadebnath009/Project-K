@@ -56,8 +56,10 @@ class PostgresConversationRepository:
                 c_id = to_uuid(conversation_id)
                 conv = session.get(Conversation, c_id)
                 if conv:
-                    if conv.user_id != u_id:
-                        raise PermissionError(f"Conversation {conversation_id} does not belong to User {user_id}")
+                    if conv.user_id!=u_id:
+                        raise PermissionError(f"Conversationn {conversation_id} does not belong to User {user_id}")
+
+                
                     return str(conv.id)
 
             else:

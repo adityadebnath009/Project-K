@@ -24,11 +24,16 @@ class OllamaClient(InferenceClient):
             messages: list[dict[str, str]],
             system_prompt: str | None = None,
     ) -> str:
-            prompt = system_prompt or settings.system_prompt
-            formatted_messages = [{"role": "system", "content": prompt}, *messages]
+            has_system = bool(messages and messages[0].get("role") == "system")
+            if has_system:
+                formatted_messages = messages
+            else:
+                prompt = system_prompt or settings.system_prompt
+                formatted_messages = [{"role": "system", "content": prompt}, *messages]
+
             response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=formatted_messages  # type: ignore
+                model=self.model_name,
+                messages=formatted_messages  # type: ignore
             )
             return response.choices[0].message.content or ""
 

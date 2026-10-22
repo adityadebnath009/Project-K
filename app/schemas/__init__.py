@@ -7,13 +7,14 @@ from app.schemas.memory import (
     UserProfileDTO,
 )
 from app.schemas.project import ProjectDTO
-from app.schemas.summary import CompactionSummary
+from app.schemas.summary import CompactionSummary, CompactionResult
 from app.schemas.user import UserDTO
 
 __all__ = [
     "ChatRequest",
     "ChatResponse",
     "CompactionSummary",
+    "CompactionResult",
     "ContextPackage",
     "ExtractedMemoryPackage",
     "MemoryItem",

@@ -1,9 +1,17 @@
 import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
-from venv import create
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Text, True_, UniqueConstraint, Uuid, func
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    Text,
+    True_,
+    UniqueConstraint,
+    Uuid,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.entities import Base

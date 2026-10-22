@@ -108,24 +108,39 @@ class ContextManager:
         turns = self._group_into_turns(history)
 
         selected_turns: list[list[dict[str, Any]]] = []
-
         accumulated_history_tokens = 0
         was_trimmed = False
 
-        for turn in reversed(turns):
-            turn_tokens = self.token_counter.count_tokens_in_messages(turn)
+        if turns:
+            # ─── 1. PIN THE ACTIVE (LATEST) TURN FIRST ───
+            active_turn = turns[-1]
+            active_turn_tokens = self.token_counter.count_tokens_in_messages(active_turn)
 
-            if accumulated_history_tokens + turn_tokens <= remaining_budget:
+            # If the user's current request ALONE exceeds the entire available budget,
+            # raise a clear error (matches ChatGPT: "Your message is too long")
+            if active_turn_tokens > remaining_budget:
+                raise ContextBudgetExceededError(
+                    f"Active user request ({active_turn_tokens} tokens) exceeds "
+                    f"the available history budget ({remaining_budget} tokens)."
+                )
 
-                selected_turns.append(turn)
-                accumulated_history_tokens += turn_tokens
+            # Active request is guaranteed delivery!
+            selected_turns.append(active_turn)
+            accumulated_history_tokens += active_turn_tokens
 
-            else:
-                
-                was_trimmed = True
-                break
+            # ─── 2. FILL REMAINING BUDGET WITH OLDER TURNS (REVERSE ORDER) ───
+            for turn in reversed(turns[:-1]):
+                turn_tokens = self.token_counter.count_tokens_in_messages(turn)
 
-        selected_turns.reverse()
+                if accumulated_history_tokens + turn_tokens <= remaining_budget:
+                    selected_turns.append(turn)
+                    accumulated_history_tokens += turn_tokens
+                else:
+                    was_trimmed = True
+                    break
+
+            # Reverse selected turns back to chronological order
+            selected_turns.reverse()
 
         flattened_history: list[dict[str, str]] = [
             msg for turn in selected_turns for msg in turn

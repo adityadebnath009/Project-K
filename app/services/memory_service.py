@@ -36,7 +36,7 @@ class MemoryService:
                 packed.append(item)
                 accumulated_tokens += cost
             else:
-                break
+                continue
         return packed
 
 
