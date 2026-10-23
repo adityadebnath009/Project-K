@@ -54,6 +54,7 @@ class ContextManager:
             summary:str | None = None,
             user_profile: str | None = None,
             project_context: str | None = None,
+            codebase_context: str | None = None,
             max_budget: int | None = None
     ) -> ContextPackage:
         budget = max_budget or settings.max_input_tokens
@@ -83,6 +84,13 @@ class ContextManager:
             project_context_message = {"role":"system", "content":project_context}
             project_context_tokens = self.token_counter.count_tokens_in_message(project_context_message)
 
+        #Tier 3.5: Active Codebase / Vertical Slice Context
+        codebase_context_message: dict[str, str] | None = None
+        codebase_context_tokens = 0
+        if codebase_context:
+            codebase_context_message = {"role": "system", "content": codebase_context}
+            codebase_context_tokens = self.token_counter.count_tokens_in_message(codebase_context_message)
+
         #Tier 4: Session Compact Memory
         summary_message:dict[str, str] | None = None
         summary_tokens = 0
@@ -94,6 +102,7 @@ class ContextManager:
             system_tokens
             + user_profile_tokens
             + project_context_tokens
+            + codebase_context_tokens
             + summary_tokens
         )
         if mandatory_tokens >= budget:
@@ -146,12 +155,14 @@ class ContextManager:
             msg for turn in selected_turns for msg in turn
         ]
        
-   # Assemble context in strict 5-tier hierarchical order
+   # Assemble context in strict 6-tier hierarchical order
         final_messages: list[dict[str, str]] = [system_message]
         if user_profile_message:
             final_messages.append(user_profile_message)
         if project_context_message:
             final_messages.append(project_context_message)
+        if codebase_context_message:
+            final_messages.append(codebase_context_message)
         if summary_message:
             final_messages.append(summary_message)
         final_messages.extend(flattened_history)

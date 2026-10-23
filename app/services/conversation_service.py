@@ -11,9 +11,11 @@ from app.inference.base import InferenceClient
 from app.repositories import ConversationRepository
 from app.repositories.interfaces import ProjectRepository
 from app.schemas import ChatRequest, ChatResponse, memory
+from app.schemas.slice import VerticalSlice
 from app.schemas.summary import CompactionResult
 from app.services.compactor import Compactor
 from app.services.context_manager import ContextManager
+from app.services.deconstructor_service import FeatureDeconstructorService
 from app.services.memory_extractor import MemoryExtractor
 from app.services.memory_service import MemoryService
 
@@ -28,6 +30,7 @@ class ConversationService:
         memory_service: MemoryService | None = None,
         memory_extractor: MemoryExtractor | None = None,
         project_repository: ProjectRepository | None = None,
+        deconstructor_service: FeatureDeconstructorService | None = None,
         auto_compact_threshold: float | None = None
     ):
         self.conversation_repository = conversation_repository
@@ -37,8 +40,11 @@ class ConversationService:
         self.memory_service = memory_service
         self.memory_extractor = memory_extractor
         self.project_repository  = project_repository
+        self.deconstructor_service = deconstructor_service or FeatureDeconstructorService()
         self.auto_compact_threshold =(auto_compact_threshold 
                                       if auto_compact_threshold is not None else  settings.auto_compact_threshold)
+        # In-memory session cache: conversation_id -> (VerticalSlice, codebase_context_str)
+        self._active_slices: dict[str, tuple[VerticalSlice, str]] = {}
 
 
 
@@ -49,6 +55,23 @@ class ConversationService:
             chat_request.conversation_id, 
             user_id
         )
+
+        # ─── 0. INTERCEPT MANUAL /deconstruct SLASH COMMAND ───
+        trimmed_msg = chat_request.message.strip()
+        if trimmed_msg.lower().startswith("/deconstruct"):
+            return self._handle_deconstruct_command(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                command_text=trimmed_msg,
+            )
+
+        # ─── 0b. TRIGGER DECONSTRUCTION VIA REQUEST ATTRIBUTES ───
+        if chat_request.repo_path:
+            self._deconstruct_and_store(
+                conversation_id=conversation_id,
+                repo_path=chat_request.repo_path,
+                feature_query=chat_request.feature_query or chat_request.message,
+            )
 
         # ─── 1. INTERCEPT MANUAL /compact SLASH COMMAND ───
         if chat_request.message.strip().lower() == "/compact":
@@ -95,6 +118,11 @@ class ConversationService:
         if self.memory_service and project_id:
             project_context = self.memory_service.get_project_memory_context(project_id=project_id)
 
+        # ─── 5b. RETRIEVE ACTIVE CODEBASE / VERTICAL SLICE CONTEXT ───
+        active_slice_info = self._active_slices.get(conversation_id)
+        codebase_context = active_slice_info[1] if active_slice_info else None
+        extracted_slice = active_slice_info[0] if active_slice_info else None
+
         # ─── 6. BUILD INITIAL CONTEXT PACKAGE ───
         context_package = self.context_manager.build_context(
             conversation_id=conversation_id,
@@ -103,6 +131,7 @@ class ConversationService:
             summary=active_summary,
             user_profile=user_profile_context,
             project_context=project_context,
+            codebase_context=codebase_context,
         )
 
         # ─── 7. AUTO-COMPACTION WATERMARK CHECK (80% CAPACITY) ───
@@ -152,6 +181,7 @@ class ConversationService:
                 summary=active_summary,
                 user_profile=user_profile_context,
                 project_context=project_context,
+                codebase_context=codebase_context,
             )
 
         # ─── 8. GENERATE INFERENCE RESPONSE ───
@@ -171,8 +201,133 @@ class ConversationService:
             model=getattr(self.inference_client, "model_name", "qwen2.5:7b"),
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            extracted_slice=extracted_slice,
         )
 
+    def _handle_deconstruct_command(
+        self,
+        conversation_id: str,
+        user_id: str,
+        command_text: str,
+    ) -> ChatResponse:
+        """
+        User-initiated /deconstruct slash command.
+        Format: `/deconstruct <repo_path> [feature_query]`
+        Example: `/deconstruct scratch/realworld_fastapi /login`
+        """
+        parts = command_text.split(maxsplit=2)
+        if len(parts) < 2:
+            help_msg = (
+                "Usage: `/deconstruct <repo_path> [feature_query]`\n"
+                "Example: `/deconstruct scratch/realworld_fastapi /login`"
+            )
+            return ChatResponse(
+                conversation_id=conversation_id,
+                message=help_msg,
+                model="deconstructor",
+                prompt_tokens=0,
+                completion_tokens=0,
+            )
+
+        repo_path = parts[1]
+        feature_query = parts[2] if len(parts) > 2 else "Core Feature"
+
+        try:
+            vslice, _ = self._deconstruct_and_store(
+                conversation_id=conversation_id,
+                repo_path=repo_path,
+                feature_query=feature_query,
+            )
+
+            # Record slash command in database history
+            self.conversation_repository.append_message(
+                conversation_id=conversation_id,
+                role="user",
+                content=command_text,
+            )
+
+            ack_message = (
+                f"✅ **Feature Deconstruction Successful!**\n\n"
+                f"- **Feature:** `{vslice.feature_name}`\n"
+                f"- **Extracted Symbols:** `{len(vslice.symbols)}`\n"
+                f"- **Files Involved ({len(vslice.files_involved)}):** {', '.join(vslice.files_involved)}\n"
+                f"- **Covered Lines:** `{vslice.total_lines_of_code}` LOC\n\n"
+                f"The vertical slice and architectural blueprint are loaded into your session context. "
+                f"You can now ask questions, explore the architecture, or request clean architecture transposition."
+            )
+
+            self.conversation_repository.append_message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=ack_message,
+            )
+
+            return ChatResponse(
+                conversation_id=conversation_id,
+                message=ack_message,
+                model="deconstructor",
+                prompt_tokens=0,
+                completion_tokens=0,
+                extracted_slice=vslice,
+            )
+        except Exception as e:
+            error_msg = f"❌ **Feature Deconstruction Failed:** {str(e)}"
+            return ChatResponse(
+                conversation_id=conversation_id,
+                message=error_msg,
+                model="deconstructor",
+                prompt_tokens=0,
+                completion_tokens=0,
+            )
+
+    def _deconstruct_and_store(
+        self,
+        conversation_id: str,
+        repo_path: str,
+        feature_query: str,
+    ) -> tuple[VerticalSlice, str]:
+        """
+        Executes feature deconstruction and caches the resulting vertical slice
+        and token-budget-safe formatted prompt context for the conversation.
+        """
+        vslice, blueprint_md = self.deconstructor_service.deconstruct_feature(
+            repo_path=repo_path,
+            feature_name=feature_query,
+            query=feature_query,
+        )
+
+        # Budget-safe context formatting
+        # Allocate up to ~50% of the input budget for the codebase slice
+        max_codebase_tokens = max(1000, settings.max_input_tokens // 2)
+        full_context = (
+            f"### [ACTIVE CODEBASE FEATURE SLICE: {vslice.feature_name}]\n"
+            f"{vslice.to_context_summary()}\n\n"
+            f"### [ARCHITECTURAL BLUEPRINT & EXTRACTED CODE]\n"
+            f"{blueprint_md}"
+        )
+
+        tokens = self.context_manager.token_counter.count_tokens(full_context)
+        if tokens <= max_codebase_tokens:
+            formatted_context = full_context
+        else:
+            # Compact view for large slices: Summary + Mermaid Architecture + Entry point source
+            mermaid = self.deconstructor_service.blueprint_generator.generate_mermaid(vslice)
+            entry_points_code = "\n\n".join(
+                f"### Entry Point: `{ep.symbol.qualified_name}`\n```python\n{ep.symbol.source_code}\n```"
+                for ep in vslice.entry_points
+            )
+            formatted_context = (
+                f"### [ACTIVE CODEBASE FEATURE SLICE: {vslice.feature_name}]\n"
+                f"{vslice.to_context_summary()}\n\n"
+                f"### [ARCHITECTURE & DEPENDENCY FLOW]\n"
+                f"```mermaid\n{mermaid}\n```\n\n"
+                f"{entry_points_code}\n\n"
+                f"> [!NOTE] Complete slice details: {len(vslice.symbols)} symbols across {len(vslice.files_involved)} files "
+                f"({vslice.total_lines_of_code} LOC). The architecture call graph above indexes all connected methods."
+            )
+
+        self._active_slices[conversation_id] = (vslice, formatted_context)
+        return vslice, blueprint_md
 
     def _handle_compact_command(
     self,
