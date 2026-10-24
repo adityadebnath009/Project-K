@@ -10,9 +10,9 @@ from app.services.deconstructor_service import FeatureDeconstructorService
 from app.slicing.blueprint import BlueprintGenerator
 from app.slicing.locator import EntryPointLocator
 
-SCRATCH_DIR = Path("/Users/adityadebnath/.gemini/antigravity/brain/b2140001-6cae-49a0-945e-79b0cd5b3541/scratch")
-FASTAPI_REALWORLD_DIR = SCRATCH_DIR / "realworld_fastapi"
-HTTPX_DIR = SCRATCH_DIR / "httpx_repo"
+FIXTURES_DIR = Path(__file__).resolve().parent.parent.parent / "test_fixtures"
+FASTAPI_REALWORLD_DIR = FIXTURES_DIR / "realworld_fastapi"
+HTTPX_DIR = FIXTURES_DIR / "httpx_repo"
 
 
 def test_locator_extracts_route_metadata():

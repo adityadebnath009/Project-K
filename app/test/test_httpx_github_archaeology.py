@@ -17,7 +17,8 @@ from app.slicing.call_graph import CallGraphTracer
 from app.schemas.slice import SymbolKind
 
 
-HTTPX_ROOT = Path("/Users/adityadebnath/.gemini/antigravity/brain/b2140001-6cae-49a0-945e-79b0cd5b3541/scratch/httpx_repo/httpx")
+FIXTURES_DIR = Path(__file__).resolve().parent.parent.parent / "test_fixtures"
+HTTPX_ROOT = FIXTURES_DIR / "httpx_repo" / "httpx"
 
 
 def test_httpx_archaeology():

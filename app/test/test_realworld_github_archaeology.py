@@ -18,7 +18,8 @@ from app.slicing.call_graph import CallGraphTracer
 from app.schemas.slice import SymbolKind
 
 
-REPO_ROOT = Path("/Users/adityadebnath/.gemini/antigravity/brain/b2140001-6cae-49a0-945e-79b0cd5b3541/scratch/realworld_fastapi/app")
+FIXTURES_DIR = Path(__file__).resolve().parent.parent.parent / "test_fixtures"
+REPO_ROOT = FIXTURES_DIR / "realworld_fastapi" / "app"
 
 
 def test_realworld_repo_parsing_and_callgraph():

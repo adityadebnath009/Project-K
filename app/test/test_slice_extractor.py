@@ -195,7 +195,8 @@ def test_09_automatic_loc_and_files_involved_derivation():
 
 def test_10_realworld_github_fastapi_slice_extraction():
     """Extracts a real vertical slice for the User Login feature from fastapi-realworld-example-app."""
-    repo_root = Path("/Users/adityadebnath/.gemini/antigravity/brain/b2140001-6cae-49a0-945e-79b0cd5b3541/scratch/realworld_fastapi/app")
+    fixtures_dir = Path(__file__).resolve().parent.parent.parent / "test_fixtures"
+    repo_root = fixtures_dir / "realworld_fastapi" / "app"
     assert repo_root.exists()
 
     py_files = sorted(list(repo_root.rglob("*.py")))
@@ -238,7 +239,8 @@ def test_10_realworld_github_fastapi_slice_extraction():
 
 def test_11_realworld_github_httpx_slice_extraction():
     """Extracts a real vertical slice for the httpx.get() execution pipeline from encode/httpx."""
-    httpx_root = Path("/Users/adityadebnath/.gemini/antigravity/brain/b2140001-6cae-49a0-945e-79b0cd5b3541/scratch/httpx_repo/httpx")
+    fixtures_dir = Path(__file__).resolve().parent.parent.parent / "test_fixtures"
+    httpx_root = fixtures_dir / "httpx_repo" / "httpx"
     assert httpx_root.exists()
 
     py_files = sorted(list(httpx_root.rglob("*.py")))
