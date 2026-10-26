@@ -23,6 +23,13 @@ class TargetComponentRole(str, Enum):
     TEST_SUITE = "test_suite"
     INFRASTRUCTURE = "infrastructure"
     UNKNOWN = "unknown"
+class ComponentAction(str, Enum):
+    """The explicit architectural action for transposing a component."""
+    REUSE = "reuse"
+    EXTEND = "extend"
+    ADAPT = "adapt"
+    CREATE = "create"
+
 
 class DataContractField(BaseModel):
     name: str = Field(description="Field name, e.g. 'email', 'price_cents'")
@@ -94,6 +101,8 @@ class TargetConventionMap(BaseModel):
 class ComponentMapping(BaseModel):
     source_id: str
     target_layer: TargetLayer
+    action: ComponentAction = Field(default=ComponentAction.CREATE, 
+                                    description="Architectural action: reuse, extend, create, or adapt")
     target_file_path: str
     target_symbol_name: str
     description: str
@@ -227,3 +236,5 @@ class TargetRepositoryProfile(BaseModel):
             val = float(v.rstrip("%").strip())
             return min(1.0, val / 100.0 if val > 1.0 else val)
         return 1.0
+
+

@@ -41,8 +41,10 @@ def test_user_service_and_repository():
     return user.id
 
 
-def test_conversation_persistence_and_auth_boundary(user_id: str):
+def test_conversation_persistence_and_auth_boundary(user_id: str | None = None):
     """Verify conversations enforce user existence and cross-user security."""
+    if user_id is None:
+        user_id = test_user_service_and_repository()
     user_repo = PostgresUserRepository()
     conv_repo = PostgresConversationRepository(user_repository=user_repo)
 
@@ -70,8 +72,10 @@ def test_conversation_persistence_and_auth_boundary(user_id: str):
     return conv_id
 
 
-def test_messages_and_sequence_monotonicity(conv_id: str):
+def test_messages_and_sequence_monotonicity(conv_id: str | None = None):
     """Verify message persistence and atomic per-conversation sequence numbering."""
+    if conv_id is None:
+        conv_id = test_conversation_persistence_and_auth_boundary()
     conv_repo = PostgresConversationRepository()
 
     # Append 3 messages
@@ -100,8 +104,10 @@ def test_messages_and_sequence_monotonicity(conv_id: str):
     print("✅ Test 3 Passed: Messages and monotonic sequence numbers verified!")
 
 
-def test_versioned_summaries(conv_id: str):
+def test_versioned_summaries(conv_id: str | None = None):
     """Verify versioned operational ledgers increment monotonically in Neon."""
+    if conv_id is None:
+        conv_id = test_conversation_persistence_and_auth_boundary()
     conv_repo = PostgresConversationRepository()
 
     # Save summary version 1

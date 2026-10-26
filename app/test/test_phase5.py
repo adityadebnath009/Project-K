@@ -129,11 +129,13 @@ def test_token_budget_packing():
     print(f"✅ Test 2 Passed: Deterministic memory budget packing constrained to {tokens_used}/150 tokens!")
 
 
-def test_cross_session_recall(user_id: str, project_id: str):
+def test_cross_session_recall(user_id: str | None = None, project_id: str | None = None):
     """
     Verify the ultimate Phase 5 invariant:
     Session 1 compacts memories -> Session 2 (brand new conversation) immediately recalls them!
     """
+    if user_id is None or project_id is None:
+        user_id, project_id = test_project_and_memory_persistence()
     conv_repo = PostgresConversationRepository()
     proj_repo = PostgresProjectRepository()
     mem_repo = PostgresMemoryRepository()

@@ -98,6 +98,37 @@ class ContextManager:
             summary_message = {"role":"system", "content":summary}
             summary_tokens = self.token_counter.count_tokens_in_message(summary_message)
 
+
+        pruning_report: list[str] = []
+
+        max_project_tokens = settings.reserved_project_memory_tokens
+        if project_context and project_context_tokens > max_project_tokens:
+            before_tokens = project_context_tokens
+            project_context = self.token_counter.truncate_to_token_limit(
+                project_context, max_project_tokens, from_end=True
+            )
+            project_context_message = {"role":"system", "content":project_context}
+            project_context_tokens = self.token_counter.count_tokens_in_message(project_context_message)
+            pruning_report.append(f"Project Memory capped ({before_tokens} -> {project_context_tokens} tokens)")
+
+        max_codebase_tokens = max(
+            settings.min_codebase_floor_tokens,
+            int(budget * settings.max_codebase_ratio),
+        )
+        if codebase_context and codebase_context_tokens > max_codebase_tokens:
+            before_tokens = codebase_context_tokens
+            truncated_code = self.token_counter.truncate_to_token_limit(
+                codebase_context, max_codebase_tokens, from_end=False
+            )
+            codebase_context = truncated_code + "\n\n[... Remaining codebase context truncated for token budget ...]"
+            codebase_context_message = {"role": "system", "content": codebase_context}
+            codebase_context_tokens = self.token_counter.count_tokens_in_message(codebase_context_message)
+            pruning_report.append(f"Codebase Slice truncated ({before_tokens} -> {codebase_context_tokens} tokens)")
+
+        # ─── 2. WEIGHTED RECENCY PRUNING (PRIORITY DECAY) ───
+        # Reserve minimum headroom for active user prompt from config
+        min_active_reserve = settings.min_active_turn_reserve
+        max_allowed_mandatory = max(100, budget - min_active_reserve)
         mandatory_tokens = (
             system_tokens
             + user_profile_tokens
@@ -105,13 +136,45 @@ class ContextManager:
             + codebase_context_tokens
             + summary_tokens
         )
+        if mandatory_tokens > max_allowed_mandatory:
+            # Prune lowest priority: Archived Chapters of Summary (Keep freshest chapter via from_end=True)
+            if summary and summary_tokens > settings.min_summary_floor_tokens:
+                needed_reduction = mandatory_tokens - max_allowed_mandatory
+                target_summary_tokens = max(settings.min_summary_floor_tokens, summary_tokens - needed_reduction)
+                before_tokens = summary_tokens
+                summary = "..." + self.token_counter.truncate_to_token_limit(
+                    summary, target_summary_tokens, from_end=True
+                )
+                summary_message = {"role": "system", "content": summary}
+                summary_tokens = self.token_counter.count_tokens_in_message(summary_message)
+                pruning_report.append(f"Summary pruned to recent chapters ({before_tokens} -> {summary_tokens} tokens)")
+                mandatory_tokens = (
+                    system_tokens + user_profile_tokens + project_context_tokens + codebase_context_tokens + summary_tokens
+                )
+            # Prune next lowest priority: Project Memory facts
+            if mandatory_tokens > max_allowed_mandatory and project_context and project_context_tokens > settings.min_project_floor_tokens:
+                needed_reduction = mandatory_tokens - max_allowed_mandatory
+                target_proj_tokens = max(settings.min_project_floor_tokens, project_context_tokens - needed_reduction)
+                before_tokens = project_context_tokens
+                project_context = self.token_counter.truncate_to_token_limit(
+                    project_context, target_proj_tokens, from_end=True
+                )
+                project_context_message = {"role": "system", "content": project_context}
+                project_context_tokens = self.token_counter.count_tokens_in_message(project_context_message)
+                pruning_report.append(f"Project Memory decayed ({before_tokens} -> {project_context_tokens} tokens)")
+                mandatory_tokens = (
+                    system_tokens + user_profile_tokens + project_context_tokens + codebase_context_tokens + summary_tokens
+                )
+        # ─── 3. THE EMERGENCY VALVE ───
         if mandatory_tokens >= budget:
+            report_str = "; ".join(pruning_report) if pruning_report else "No non-essential context available to prune"
             raise ContextBudgetExceededError(
-                f"Mandatory context ({mandatory_tokens} tokens) exceeds total input budget ({budget} tokens)."
+                f"Emergency Valve Triggered: Mandatory context ({mandatory_tokens} tokens) exceeds total budget ({budget} tokens) "
+                f"even after iterative pruning.\nPruning Report: {report_str}"
             )
-
-        
         remaining_budget = budget - mandatory_tokens
+
+
 
 
         turns = self._group_into_turns(history)

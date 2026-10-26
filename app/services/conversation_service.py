@@ -330,11 +330,11 @@ class ConversationService:
         return vslice, blueprint_md
 
     def _handle_compact_command(
-    self,
-    conversation_id: str,
-    user_id: str,
-    project_id: str | None = None,
-) -> ChatResponse:
+        self,
+        conversation_id: str,
+        user_id: str,
+        project_id: str | None = None,
+    ) -> ChatResponse:
         """User-initiated /compact slash command."""
         result = self._execution_compaction(
             conversation_id=conversation_id,
@@ -344,18 +344,19 @@ class ConversationService:
         )
 
         if result.version == 0:
-            return ChatResponse(
-                conversation_id=conversation_id,
-                message="No conversation history available to compact.",
-                model="compactor",
-                prompt_tokens=0,
-                completion_tokens=0,
+            ack_message = "No conversation history available to compact."
+        else:
+            ack_message = (
+                f"Conversation compacted successfully (version {result.version}).\n"
+                f"Memories updated: {result.user_facts_saved} user facts, {result.project_facts_saved} project facts.\n\n"
+                f"{result.summary_content}"
             )
 
-        ack_message = (
-            f"Conversation compacted successfully (version {result.version}).\n"
-            f"Memories updated: {result.user_facts_saved} user facts, {result.project_facts_saved} project facts.\n\n"
-            f"{result.summary_content}"
+        # Persist the assistant's compaction confirmation so subsequent turns maintain working memory context
+        self.conversation_repository.append_message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=ack_message,
         )
 
         return ChatResponse(

@@ -35,4 +35,31 @@ class TokenCounter:
             total_tokens += self.count_tokens_in_message(message)
         return total_tokens
 
+    def decode(self, tokens: list[int]) -> str:                                                                                                                                                           
+          """                                                                                                                                                                                               
+          Converts a list of token IDs back into a UTF-8 string.
+          """                                                                                                                                                                                               
+          if not tokens:
+              return ""
+          return self.encoding.decode(tokens)
 
+    
+    def truncate_to_token_limit(
+            self, 
+            text: str,
+            max_tokens: int,
+            from_end: bool = False,
+    ) -> str:
+        if not text or max_tokens<=0:
+            return ""
+
+        tokens = self.encoding.encode(text)
+        if len(tokens) <= max_tokens:
+            return text
+
+        if from_end:
+            return self.encoding.decode(tokens[-max_tokens:])
+        else:
+            return self.encoding.decode(tokens[:max_tokens])
+
+        

@@ -126,8 +126,8 @@ def test_compact_command_and_context_injection():
     assert latest_summary["version"] == 1
     assert latest_summary["last_covered_sequence_number"] == 4
 
-    # Notice: /compact is a control command and was NOT added to the raw message history
-    assert len(repo.get_messages(conv_id)) == 4
+    # Notice: /compact control command was not added, but the assistant's ack response is persisted
+    assert len(repo.get_messages(conv_id)) == 5
 
     # Turn 3: Post-compaction conversation turn
     req3 = ChatRequest(conversation_id=conv_id, message="What architecture did we choose?")

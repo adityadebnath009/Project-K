@@ -24,6 +24,13 @@ class Settings:
     reserved_user_profile_tokens: int = int(os.getenv("RESERVED_USER_PROFILE_TOKENS", "150"))
     reserved_project_memory_tokens: int = int(os.getenv("RESERVED_PROJECT_MEMORY_TOKENS", "350"))
     auto_compact_threshold: float = float(os.getenv("AUTO_COMPACT_THRESHOLD", "0.80"))
+
+    # ─── CONTEXT PRUNING & TIER BUDGET CONFIGURATION ───
+    min_active_turn_reserve: int = int(os.getenv("MIN_ACTIVE_TURN_RESERVE", "300"))
+    max_codebase_ratio: float = float(os.getenv("MAX_CODEBASE_RATIO", "0.40"))
+    min_codebase_floor_tokens: int = int(os.getenv("MIN_CODEBASE_FLOOR_TOKENS", "500"))
+    min_summary_floor_tokens: int = int(os.getenv("MIN_SUMMARY_FLOOR_TOKENS", "100"))
+    min_project_floor_tokens: int = int(os.getenv("MIN_PROJECT_FLOOR_TOKENS", "50"))
     @property
     def max_input_tokens(self) -> int:
         return self.effective_context_limit - self.reserved_output_tokens - self.safety_margin
