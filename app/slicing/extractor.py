@@ -72,6 +72,19 @@ class SliceExtractor:
                         if parent_class and parent_class.symbol_id not in reachable_symbols_dict:
                             reachable_symbols_dict[parent_class.symbol_id] = parent_class
 
+                # Lexical Enclosure / Closure Preservation:
+                # If this symbol encloses inner functions or closures, include them in the slice
+                # so decorators and wrapper functions stay complete without leaking call scopes.
+                file_symbols = {s.symbol_id: s for s in table._by_file.get(sym.file_path, {}).values()}.values()
+                for potential_inner in file_symbols:
+                    if (
+                        sym.line_start < potential_inner.line_start
+                        and potential_inner.line_end <= sym.line_end
+                    ):
+                        if potential_inner.symbol_id not in reachable_symbols_dict:
+                            reachable_symbols_dict[potential_inner.symbol_id] = potential_inner
+                            queue.append(potential_inner.symbol_id)
+
                 # Enqueue all unvisited downstream callees
                 for neighbor_id in forward_graph.get(current_id, set()):
                     if neighbor_id not in visited_ids:

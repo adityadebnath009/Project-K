@@ -50,12 +50,12 @@ class _CallExtractor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-        # Descend into nested closures/wrapper functions so decorator logic is captured
-        self.generic_visit(node)
+        # Halt traversal at nested function boundaries to prevent scope leakage
+        pass
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-        # Descend into nested closures/wrapper functions so decorator logic is captured
-        self.generic_visit(node)
+        # Halt traversal at nested async function boundaries to prevent scope leakage
+        pass
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         # Do not descend into nested classes
