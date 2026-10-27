@@ -153,9 +153,45 @@ def test_compact_command_and_context_injection():
     print("✅ Test 3 Passed: /compact workflow & summary context injection verified end-to-end!")
 
 
+def test_compactor_with_inference_client():
+    """Verify Compactor supports custom InferenceClient without AttributeError."""
+    import json
+    from app.inference.ollama_client import OllamaClient
+    from app.services.compactor import Compactor
+
+    # 1. Initialization check
+    compactor_ollama = Compactor(llm=OllamaClient())
+    assert compactor_ollama.structured_llm is None
+
+    # 2. Functional compaction check via InferenceClient generate()
+    class MockClient:
+        def generate(self, messages, system_prompt=None):
+            payload = {
+                "primary_goal": "Migrate Redis queue to Celery",
+                "key_decisions": ["Use RabbitMQ broker"],
+                "constraints": ["Zero downtime"],
+                "files_and_artifacts": ["tasks.py"],
+                "completed_tasks": ["Setup broker"],
+                "pending_tasks": ["Migrate workers"],
+            }
+            return "```json\n" + json.dumps(payload) + "\n```"
+
+    compactor = Compactor(llm=MockClient())
+    summary = compactor.compact_history([
+        {"role": "user", "content": "How do we migrate to Celery?"},
+        {"role": "assistant", "content": "We can use RabbitMQ as broker."},
+    ])
+
+    assert isinstance(summary, CompactionSummary)
+    assert summary.primary_goal == "Migrate Redis queue to Celery"
+    assert "Use RabbitMQ broker" in summary.key_decisions
+    print("✅ Test 4 Passed: Compactor handles InferenceClient and Markdown JSON cleanly!")
+
+
 if __name__ == "__main__":
     print("\n🚀 Running Phase 3 Verification Test Suite...\n")
     test_compaction_summary_markdown()
     test_repository_versioned_summaries()
     test_compact_command_and_context_injection()
+    test_compactor_with_inference_client()
     print("\n🎉 ALL PHASE 3 TESTS PASSED!\n")

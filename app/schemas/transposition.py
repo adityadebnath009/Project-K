@@ -83,19 +83,49 @@ class FrameworkAgnosticIR(BaseModel):
     source_provenance_files: list[str] = Field(default_factory=list)
     source_symbol_ids: list[str] = Field(default_factory=list)
 
+def default_layer_dirs() -> dict[TargetLayer, str]:
+    return {
+        TargetLayer.ENTITY: "app/entities",
+        TargetLayer.REPOSITORY_PROTOCOL: "app/repositories",
+        TargetLayer.REPOSITORY_IMPL: "app/repositories",
+        TargetLayer.SERVICE: "app/services",
+        TargetLayer.SCHEMA: "app/schemas",
+        TargetLayer.TEST: "app/test",
+    }
+
+
+def default_dto_suffixes() -> list[str]:
+    return [
+        "request", "response", "dto", "schema", "inresponse",
+        "payload", "view", "body", "out", "param"
+    ]
+
+
 class TargetConventionMap(BaseModel):
     architecture_style: str = "Clean Architecture"
-    entities_dir: str = "app/entities"
-    repositories_dir: str = "app/repositories"
-    services_dir: str = "app/services"
-    schemas_dir: str = "app/schemas"
-    test_dir: str = "app/test"
+    layer_directories: dict[TargetLayer, str] = Field(default_factory=default_layer_dirs)
+    repo_naming_pattern: str = "{symbol}Repository"
+    service_naming_pattern: str = "{symbol}Service"
+    dto_suffixes: list[str] = Field(default_factory=default_dto_suffixes)
     base_entity_import: str = "app.entities.base.Base"
     pk_strategy: str = "uuid7"
     orm_style: str = "sqlalchemy_2.0"
     schema_style: str = "pydantic_v2"
     existing_entities: list[str] = Field(default_factory=list)
     existing_services: list[str] = Field(default_factory=list)
+
+    def get_layer_dir(self, layer: TargetLayer) -> str:
+        """Returns the center-of-gravity directory for a given architectural layer."""
+        return self.layer_directories.get(layer, f"app/{layer.value}s")
+
+    def get_file_path(self, layer: TargetLayer, file_slug: str) -> str:
+        """Returns the full relative target file path for a component."""
+        layer_dir = self.get_layer_dir(layer)
+        return f"{layer_dir}/{file_slug}.py"
+
+    def format_repo_name(self, symbol_name: str) -> str:
+        """Applies the discovered repository naming pattern to an entity symbol."""
+        return self.repo_naming_pattern.format(symbol=symbol_name)
 
 
 class ComponentMapping(BaseModel):
@@ -130,20 +160,6 @@ class TranspositionResult(BaseModel):
     ir: FrameworkAgnosticIR
     audit_passed: bool = False
     audit_feedback: str | None = None
-
-
-class TranspositionState(TypedDict):
-    """The shared state dictionary flowing through the LangGraph StateGraph."""
-    source_slice: VerticalSlice
-    target_repo_path: str
-    ir: FrameworkAgnosticIR | None
-    conventions: TargetConventionMap | None
-    plan: AdaptationPlan | None
-    scaffolded_files: list[ScaffoldedFile]
-    audit_passed: bool
-    audit_feedback: str | None
-
-
 class EvidenceReference(BaseModel):
     """An empirical observation backed by exact AST, symbol, or manifest evidence."""
     file_path: str = Field(description="Relative path of file containing the evidence")
@@ -212,6 +228,7 @@ class TargetRepositoryProfile(BaseModel):
     dto_pattern: str = Field(default="unknown", description="e.g. 'pydantic_v2', 'dataclasses', 'unknown'")
     primary_key_pattern: str = Field(default="unknown", description="e.g. 'uuid7', 'uuid4', 'int', 'unknown'")
     test_framework: str = Field(default="unknown", description="e.g. 'pytest', 'unittest', 'unknown'")
+    conventions: TargetConventionMap = Field(default_factory=TargetConventionMap)
     
     # Explicit evidence-backed component roles
     components: list[ComponentAssessment] = Field(default_factory=list)
@@ -238,3 +255,16 @@ class TargetRepositoryProfile(BaseModel):
         return 1.0
 
 
+class TranspositionState(TypedDict):
+    """The shared state dictionary flowing through the LangGraph StateGraph."""
+    source_slice: VerticalSlice
+    target_repo_path: str
+    target_profile: TargetRepositoryProfile | None
+    target_manifest: TargetEvidenceManifest | None
+    ir: FrameworkAgnosticIR | None
+    conventions: TargetConventionMap | None
+    plan: AdaptationPlan | None
+    scaffolded_files: list[ScaffoldedFile]
+    audit_passed: bool
+    audit_feedback: str | None
+    retry_count: int

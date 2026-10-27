@@ -26,6 +26,7 @@ from app.schemas.transposition import (
     PureAlgorithm,
     StateMachine,
     StateTransition,
+    TranspositionState,
 )
 
 
@@ -266,3 +267,16 @@ class IRExtractor:
             ir.algorithms = fallback.algorithms
 
         return ir
+
+
+def extract_ir_node(state: TranspositionState) -> dict[str, Any]:
+    """
+    LangGraph node: Distills a raw VerticalSlice into a FrameworkAgnosticIR.
+    """
+    source_slice = state.get("source_slice")
+    if not source_slice:
+        raise ValueError("Cannot extract IR: 'source_slice' is missing from TranspositionState.")
+
+    extractor = IRExtractor()
+    ir = extractor.extract_ir(source_slice)
+    return {"ir": ir}

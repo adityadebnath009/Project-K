@@ -27,11 +27,16 @@ Separate extracted memories strictly into two categories:
 
 
 class MemoryExtractor:
-    def __init__(self, 
-                model_name : str | None = None,
+    def __init__(self,
+                model_name : Any | None = None,
                 base_url: str | None = None):
 
-        self.model_name = model_name or settings.model_name
+        # Ensure model_name is a string. If it's an object, try to get its model_name attribute.
+        resolved_model = model_name
+        if not isinstance(model_name, str) and model_name is not None:
+            resolved_model = getattr(model_name, "model_name", settings.model_name)
+
+        self.model_name = resolved_model or settings.model_name
         raw_url = base_url or settings.ai_base_url
         self.base_url = raw_url.rstrip("/").removesuffix("/v1")
 

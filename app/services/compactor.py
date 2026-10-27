@@ -1,7 +1,8 @@
+import json
+import re
 from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
-
 
 from app.config import settings
 from app.schemas.summary import CompactionSummary
@@ -16,7 +17,7 @@ Do NOT write a narrative or story. Preserve critical architecture decisions, fil
 class Compactor:
     """
     Distills raw conversation turns into a structured CompactionSummary
-    using LangChain's native with_structured_output.
+    using LangChain's native with_structured_output or an InferenceClient fallback.
     """
 
     def __init__(
@@ -26,12 +27,21 @@ class Compactor:
     ) -> None:
         base_url = settings.ai_base_url.rstrip("/").removesuffix("/v1")
 
-        self.llm = llm or ChatOllama(
-            base_url=base_url,
-            model=settings.model_name,
-            temperature=0,
-        )
-        self.structured_llm = self.llm.with_structured_output(CompactionSummary)
+        if llm is None:
+            self.llm = ChatOllama(
+                base_url=base_url,
+                model=settings.model_name,
+                temperature=0,
+            )
+        else:
+            self.llm = llm
+
+        # Bind structured output if the model supports LangChain's interface
+        if hasattr(self.llm, "with_structured_output"):
+            self.structured_llm = self.llm.with_structured_output(CompactionSummary)
+        else:
+            self.structured_llm = None
+
         self.token_counter = token_counter or TokenCounter()
 
     def compact_history(
@@ -76,19 +86,33 @@ class Compactor:
         formatted_dialogue.extend(bounded_lines)
         user_content = "\n".join(formatted_dialogue)
 
-        messages = [
-            SystemMessage(content=COMPACTION_SYSTEM_PROMPT),
-            HumanMessage(content=user_content),
-        ]
+        # 4. Invoke LLM via LangChain or InferenceClient fallback
+        if self.structured_llm is not None:
+            messages = [
+                SystemMessage(content=COMPACTION_SYSTEM_PROMPT),
+                HumanMessage(content=user_content),
+            ]
+            result = self.structured_llm.invoke(messages)
+            if isinstance(result, CompactionSummary):
+                return result
+            return CompactionSummary.model_validate(result)
 
+        # InferenceClient / OllamaClient path
+        schema_prompt = (
+            f"{COMPACTION_SYSTEM_PROMPT}\n"
+            "Output your response strictly as a JSON object adhering to this schema:\n"
+            f"{json.dumps(CompactionSummary.model_json_schema())}\n"
+            "Return ONLY the valid JSON object, with no conversational filler."
+        )
+        raw_output = self.llm.generate(
+            messages=[{"role": "user", "content": user_content}],
+            system_prompt=schema_prompt,
+        )
 
-        result = self.structured_llm.invoke(messages)
+        cleaned_json = raw_output.strip()
+        if "```" in cleaned_json:
+            match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned_json)
+            if match:
+                cleaned_json = match.group(1).strip()
 
-
-
-        if(isinstance(result, CompactionSummary)):
-            return result
-
-        return CompactionSummary.model_validate(result)
-
-        
+        return CompactionSummary.model_validate_json(cleaned_json)

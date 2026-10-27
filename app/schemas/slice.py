@@ -104,6 +104,7 @@ class VerticalSlice(BaseModel):
         description="Total unique covered source lines across all symbols (derived when None)",
     )
 
+
     @model_validator(mode="after")
     def sync_derived_fields(self) -> "VerticalSlice":
         # 1. Derive files_involved from symbols if omitted or empty

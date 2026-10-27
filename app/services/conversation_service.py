@@ -52,7 +52,7 @@ class ConversationService:
         user_id = chat_request.user_id or "default_user"
         project_id = chat_request.project_id
         conversation_id = self.conversation_repository.get_or_create_conversation(
-            chat_request.conversation_id, 
+            chat_request.conversation_id,
             user_id
         )
 
@@ -76,8 +76,8 @@ class ConversationService:
         # ─── 1. INTERCEPT MANUAL /compact SLASH COMMAND ───
         if chat_request.message.strip().lower() == "/compact":
             return self._handle_compact_command(
-                conversation_id=conversation_id, 
-                user_id=user_id, 
+                conversation_id=conversation_id,
+                user_id=user_id,
                 project_id=project_id
             )
 
@@ -104,12 +104,11 @@ class ConversationService:
         )
 
         # ─── 4. WATERMARK FILTERING (ZERO DUPLICATION) ───
-        # Only select messages that are NOT yet covered in the active summary!
         uncovered_history = [
             m for m in history if m.get("sequence_number", 0) > last_covered_seq
         ]
 
-        # ─── 5. RETRIEVE TIER 2 & TIER 3 MEMORIES (~2ms DB LOOKUP) ───
+        # ─── 5. RETRIEVE TIER 2 & TIER 3 MEMORIES ───
         user_profile_context = None
         if self.memory_service:
             user_profile_context = self.memory_service.get_user_profile_context(user_id=user_id)
@@ -127,11 +126,11 @@ class ConversationService:
         context_package = self.context_manager.build_context(
             conversation_id=conversation_id,
             user_id=user_id,
-            history=uncovered_history,  # <--- Only fresh, uncovered messages!
+            history=uncovered_history,
             summary=active_summary,
             user_profile=user_profile_context,
             project_context=project_context,
-            codebase_context=codebase_context,
+            codebase_context=codebase_context, # This now injects the la real OS repo slice!
         )
 
         # ─── 7. AUTO-COMPACTION WATERMARK CHECK (80% CAPACITY) ───
